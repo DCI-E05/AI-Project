@@ -2,6 +2,8 @@ import cv2
 import mediapipe as mp
 import tensorflow as tf
 
+# pip3 install tensorflow mediapipe opencv
+
 
 mp_draw = mp.solutions.drawing_utils
 
