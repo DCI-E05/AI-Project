@@ -1,22 +1,18 @@
+import speech_recognition as sr
 # install 'sudo apt install python3-pyaudio'
 
-import speech_recognition as sr
-import os
-
 # Initialize recognizer
-r = sr.Recognizer()
+# r = sr.Recognizer()
 
-# Use microphone as audio source
-with sr.Microphone() as source:
-    os.system('clear')
-    print("Speak something...")
-    audio = r.listen(source)
+def speech_to_text(m: sr.Microphone, r: sr.Recognizer):
+    with m as source:
+        print("Speak something...")
+        audio = r.listen(source)
 
-# Recognize speech
-try:
-    text = r.recognize_google(audio)
-    print("You said:", text)
-except sr.UnknownValueError:
-    print("Speech could not be recognized.")
-except sr.RequestError as e:
-    print("Could not request results from Google Speech Recognition service; {0}".format(e))
+        try:
+            text = r.recognize_google(audio)
+            return text
+        except sr.UnknownValueError:
+            return "Speech could not be recognized."
+        except sr.RequestError as e:
+            return f"Could not request results from Google Speech Recognition service; {e}"
