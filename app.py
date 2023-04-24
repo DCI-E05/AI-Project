@@ -1,8 +1,8 @@
 import sys
 from PySide6 import QtGui
 from PySide6.QtCore import QThread, Qt, Signal, Slot, QSize
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit
-from PySide6.QtGui import QPixmap, QImage
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit, QCheckBox
+from PySide6.QtGui import QPixmap, QImage, QFont
 from pydub import AudioSegment
 from pydub.playback import play
 import markdown
@@ -27,6 +27,7 @@ class SoundPlayer(QThread):
 class CameraThread(QThread):
     change_frame = Signal(np.ndarray)
     results = Signal(list)
+    bboxes = False
 
     def __init__(self):
         """Initialize parent's __init__() method and set the run flag of instance"""
@@ -39,7 +40,8 @@ class CameraThread(QThread):
         while self._run_flag:
             success, img = self.cap.read()
             if success:
-                frame, results = prepare_image(img, classes, False)
+                # FINISH WORKABILITY OF CHECKBOX
+                frame, results = prepare_image(img, classes, draw_results=CameraThread.bboxes)
                 self.results.emit(results)
                 self.change_frame.emit(frame)
         self.cap.release()
@@ -57,7 +59,8 @@ class VideoChat(QWidget):
         
         self.setFixedSize(900, 900)
         self.setWindowTitle('GPT Video Chat')
-        self.setStyleSheet('background-color: black;')
+        self.setStyleSheet('''QWidget {background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #240068, stop: 1 #060060); }''')
 
         self.main_layout = QVBoxLayout()
         self.main_layout.setAlignment(Qt.AlignHCenter)
@@ -65,18 +68,28 @@ class VideoChat(QWidget):
         self.submain_layout = QHBoxLayout()
         self.submain_layout.setAlignment(Qt.AlignCenter)
 
+        self.font = QFont("Helvetica", 20)
+
         self.title = QLabel(text="Video Chat with GPT")
+        self.title.setFont(self.font)
         self.title.setAlignment(Qt.AlignHCenter)
         self.title.setStyleSheet("""font-size: 30px;
 text-align: center;
-color: maroon;""")
+color: maroon;
+background-color: none;""")
 
         
         # Displays group
         self.camera_image = QLabel()
         self.camera_image.setFixedSize(640, 360)
+        # self.camera_image.setScaledContents(True)
+        self.camera_pixmap = QPixmap('./icons/camera-off.png')
+        scaled = self.camera_pixmap.scaled(200, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.camera_image.setPixmap(scaled)
+        self.camera_image.setAlignment(Qt.AlignCenter)
         self.camera_image.setStyleSheet("""border: 5px solid maroon;
-border-radius: 13px;""")
+border-radius: 13px;
+background-color: black;""")
 
         
         self.chat_layout = QVBoxLayout()
@@ -85,12 +98,14 @@ border-radius: 13px;""")
         self.chat_browser.setAcceptRichText(True)
         self.chat_browser.setFixedSize(640, 360)
         self.chat_browser.setReadOnly(True)
-        html = markdown.markdown("# This is header\n\n*This is bold*")
+        html = markdown.markdown("# Welcome to chat with GPT!\ndfghfgh\ndfgh\ndfghd\nsadfgfasdfa\nfdgh\n\nasdfasdf\nsdfgs\ndfsgsdfg\nsdfgsdfgs\nsdfgsdfg\nsdfgsdfg\nsdfgasdfas")
+        html = '\n'.join(classes)
         self.chat_browser.setText(html)
         self.chat_browser.setStyleSheet("""border: 5px solid maroon;
 border-radius: 13px;
 color: maroon;
-text-align: center;""")
+text-align: center;
+background-color: black;""")
 
 
         # CAMERA THREAD                                        
@@ -100,6 +115,13 @@ text-align: center;""")
 
         # Buttons group
         self.buttons_layout = QVBoxLayout()
+        self.buttons_layout.setAlignment(Qt.AlignCenter)
+
+        self.boxes_check = QCheckBox(text="Show bound boxes")
+        self.boxes_check.setChecked(False)
+        self.boxes_check.setStyleSheet('background: transparent;')
+        self.boxes_check.clicked.connect(self.show_boxes)
+        
 
         self.say_button_icon = QPixmap('./icons/microphone.png')
         self.say_button = QPushButton(text="Say")
@@ -110,10 +132,12 @@ border: 3px solid maroon;
 border-radius: 13px;
 color: maroon;
 font-size: 20px;
+background-color: black;
 }
 
 QPushButton:hover {
 border: 4px solid white;
+background-color: black;
 }
 """)
         self.say_button.setFixedSize(200, 100)
@@ -129,6 +153,7 @@ border: 3px solid maroon;
 border-radius: 13px;
 color: maroon;
 font-size: 20px;
+background-color: black;
 }
 
 QPushButton:hover {
@@ -153,6 +178,7 @@ border: 3px solid maroon;
 border-radius: 13px;
 color: maroon;
 font-size: 20px;
+background-color: black;
 }
 
 QPushButton:hover {
@@ -175,6 +201,7 @@ border: 4px solid white;
         self.chat_layout.addWidget(self.chat_browser)
 
         # BUTTONS
+        self.buttons_layout.addWidget(self.boxes_check)
         self.buttons_layout.addWidget(self.call_button)
         self.buttons_layout.addWidget(self.say_button)
         self.buttons_layout.addWidget(self.exit_button)
@@ -182,10 +209,15 @@ border: 4px solid white;
 
         # self.main_layout.addWidget(self.start_button)
 
-
         self.setLayout(self.main_layout)
         self.show()
 
+    def show_boxes(self):
+        if self.boxes_check.isChecked:
+            CameraThread.bboxes = False
+        else:
+            CameraThread.bboxes = True
+            
 
     def start_camera(self):
         self.camera_thread.start()
@@ -209,6 +241,12 @@ border: 4px solid white;
             self.camera_image.setPixmap(qt_img)
         elif not self.__initial_sound_finished:
             blured_image = cv2.blur(cv_img, ksize=(35, 35))
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            text = "Calling..."
+            textsize = cv2.getTextSize(text, font, 1, 2)[0]
+            textX = (blured_image.shape[1] - textsize[0]) // 2
+            textY = (blured_image.shape[0] + textsize[1]) // 2
+            cv2.putText(blured_image, text, (textX, textY), font, 1.5, (0, 255, 0), 5)
             qt_img = self.convert_cv_qt(blured_image)
             self.camera_image.setPixmap(qt_img)
 
