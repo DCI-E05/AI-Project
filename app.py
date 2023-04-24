@@ -6,6 +6,8 @@ from PySide6.QtGui import QPixmap, QImage
 import markdown
 import cv2
 import numpy as np
+from test import prepare_image
+from names import classes
 
 
 class CameraThread(QThread):
@@ -22,7 +24,8 @@ class CameraThread(QThread):
         while self._run_flag:
             success, img = self.cap.read()
             if success:
-                self.change_frame.emit(img)
+
+                self.change_frame.emit(prepare_image(img, classes))
         self.cap.release()
 
     def stop(self):
@@ -112,6 +115,11 @@ font-size: 20px;
 QPushButton:hover {
 border: 4px solid white;
 }
+
+QPushButton:disabled {
+border: 2px solid rgba(83, 1, 1, 0.69);
+blur(10px);
+}
 """)
         self.call_button.clicked.connect(self.start_camera)
         self.call_button.setFixedSize(200, 100)
@@ -162,6 +170,7 @@ border: 4px solid white;
 
     def start_camera(self):
         self.camera_thread.start()
+        self.call_button.setEnabled(False)
 
     @Slot(np.ndarray)
     def update_image(self, cv_img):
