@@ -3,6 +3,8 @@ from PySide6 import QtGui
 from PySide6.QtCore import QThread, Qt, Signal, Slot, QSize
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit
 from PySide6.QtGui import QPixmap, QImage
+from pydub import AudioSegment
+from pydub.playback import play
 import markdown
 import cv2
 import numpy as np
@@ -10,8 +12,21 @@ from test import prepare_image
 from names import classes
 
 
+class SoundPlayer(QThread):
+    finished = Signal(bool)
+
+    def __init__(self, file_name):
+        super().__init__()
+        self.file_name = file_name
+
+    def run(self):
+        audio = AudioSegment.from_file(self.file_name, format="mp3")
+        play(audio)
+        self.finished.emit(True)
+
 class CameraThread(QThread):
     change_frame = Signal(np.ndarray)
+    results = Signal(list)
 
     def __init__(self):
         """Initialize parent's __init__() method and set the run flag of instance"""
@@ -24,8 +39,9 @@ class CameraThread(QThread):
         while self._run_flag:
             success, img = self.cap.read()
             if success:
-
-                self.change_frame.emit(prepare_image(img, classes))
+                frame, results = prepare_image(img, classes, False)
+                self.results.emit(results)
+                self.change_frame.emit(frame)
         self.cap.release()
 
     def stop(self):
@@ -36,6 +52,8 @@ class CameraThread(QThread):
 class VideoChat(QWidget):
     def __init__(self):
         super().__init__()
+        self.__initial_sound_finished = False
+        self.__on_frame = []
         
         self.setFixedSize(900, 900)
         self.setWindowTitle('GPT Video Chat')
@@ -78,6 +96,7 @@ text-align: center;""")
         # CAMERA THREAD                                        
         self.camera_thread = CameraThread()
         self.camera_thread.change_frame.connect(self.update_image)
+        self.camera_thread.results.connect(self.update_results)
 
         # Buttons group
         self.buttons_layout = QVBoxLayout()
@@ -170,15 +189,35 @@ border: 4px solid white;
 
     def start_camera(self):
         self.camera_thread.start()
+        self.play_calling_sound = SoundPlayer('./sounds/call-ring.mp3')
+        self.play_calling_sound.finished.connect(self.change_state_of_camera)
+        self.play_calling_sound.finished.connect(self.play_calling_sound.deleteLater)
+        self.play_calling_sound.start()
         self.call_button.setEnabled(False)
+
+    def change_state_of_camera(self):
+        self.play_accepted_call = SoundPlayer('./sounds/notification-on.mp3')
+        self.play_accepted_call.finished.connect(self.play_accepted_call.deleteLater)
+        self.play_accepted_call.start()
+        self.__initial_sound_finished = True
 
     @Slot(np.ndarray)
     def update_image(self, cv_img):
         """Updates the image_label with a new opencv image"""
-        self.image_to_process = cv_img
-        qt_img = self.convert_cv_qt(cv_img)
-        self.camera_image.setPixmap(qt_img)
+        if self.__initial_sound_finished:
+            qt_img = self.convert_cv_qt(cv_img)
+            self.camera_image.setPixmap(qt_img)
+        elif not self.__initial_sound_finished:
+            blured_image = cv2.blur(cv_img, ksize=(35, 35))
+            qt_img = self.convert_cv_qt(blured_image)
+            self.camera_image.setPixmap(qt_img)
+
     
+    @Slot(list)
+    def update_results(self, results):
+        self.__on_frame = results
+        # print(self.__on_frame)
+
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
         rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
@@ -189,6 +228,9 @@ border: 4px solid white;
         return QPixmap.fromImage(p)
     
     def exit_app(self):
+        self.exit_sound = SoundPlayer('./sounds/notification-off.mp3')
+        self.exit_sound.start()
+        self.exit_sound.wait()
         self.camera_thread.stop()
         self.close()
 
