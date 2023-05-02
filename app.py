@@ -8,9 +8,11 @@ from pydub.playback import play
 import markdown
 import cv2
 import numpy as np
-from test import prepare_image
+from object_recognition import prepare_image
 from names import classes
 
+
+# pip install PySide6
 
 class SoundPlayer(QThread):
     finished = Signal(bool)
@@ -41,7 +43,7 @@ class CameraThread(QThread):
             success, img = self.cap.read()
             if success:
                 # FINISH WORKABILITY OF CHECKBOX
-                frame, results = prepare_image(img, classes, draw_results=CameraThread.bboxes)
+                frame, results = prepare_image(img, classes, draw_results=True)
                 self.results.emit(results)
                 self.change_frame.emit(frame)
         self.cap.release()
@@ -213,7 +215,7 @@ border: 4px solid white;
         self.show()
 
     def show_boxes(self):
-        if self.boxes_check.isChecked:
+        if self.boxes_check.isChecked():
             CameraThread.bboxes = False
         else:
             CameraThread.bboxes = True

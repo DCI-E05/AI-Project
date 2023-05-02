@@ -1,47 +1,33 @@
 import cv2
-import mediapipe as mp
-import tensorflow as tf
-from names import names
-
-# pip3 install tensorflow mediapipe opencv
 
 
-mp_draw = mp.solutions.drawing_utils
+# model: https://github.com/Qengineering/MobileNet_SSD_OpenCV_TensorFlow
 
-cap = cv2.VideoCapture(0)
 
-model = tf.saved_model.load("./model/efficientdet_d0_coco17_tpu-32/saved_model/")
+model = cv2.dnn.readNetFromTensorflow('./model/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph_V2.pb', './model/ssd_mobilenet_v2_coco_2018_03_29/ssd_mobilenet_v2_coco_2018_03_29.pbtxt')
 
-while True:
 
-    success, img = cap.read()
-    
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-    img_new = cv2.resize(img_rgb, (512, 512))
-    
-    input_tensor = tf.convert_to_tensor(img_new)
-    input_tensor = input_tensor[tf.newaxis, ...]
+def prepare_image(frame, classes, draw_results=True):
+    blob = cv2.dnn.blobFromImage(frame, size=(300, 300), swapRB=True, crop=False)
+    model.setInput(blob)
+    output = model.forward()
+    results = []
 
-    detections = model(input_tensor)
-    
+    for detection in output[0, 0, :, :]:
+        confidence = detection[2]
+        if confidence > 0.5:
+            
+            class_id = int(detection[1])
+            class_name = classes[class_id]
+            results.append(class_name)
 
-    num_detections = int(detections.pop('num_detections'))
-    detections = {key: value[0, :num_detections].numpy() for key, value in detections.items()}
-    detections['num_detections'] = num_detections
-    
-    for i in range(num_detections):
-        class_id = int(detections['detection_classes'][i])
-        score = detections['detection_scores'][i]
-        bbox = detections['detection_boxes'][i]
-        if score > 0.5:
-            print(names[class_id])
-    # img_rgb = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    cv2.imshow('Video', img)
-    
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-        
-# Звільняємо ресурси
-cap.release()
-cv2.destroyAllWindows()
+            if draw_results:
+                x1 = int(detection[3] * frame.shape[1])
+                y1 = int(detection[4] * frame.shape[0])
+                x2 = int(detection[5] * frame.shape[1])
+                y2 = int(detection[6] * frame.shape[0])
+
+                # Відображення результатів на кадрі
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, class_name, (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
+    return frame, results
