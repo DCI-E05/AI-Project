@@ -4,10 +4,9 @@ import cv2
 # model: https://github.com/Qengineering/MobileNet_SSD_OpenCV_TensorFlow
 
 
-model = cv2.dnn.readNetFromTensorflow('./model/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph_V2.pb', './model/ssd_mobilenet_v2_coco_2018_03_29/ssd_mobilenet_v2_coco_2018_03_29.pbtxt')
 
 
-def prepare_image(frame, classes, draw_results=True):
+def prepare_image(frame, classes, model, draw_results=True):
     blob = cv2.dnn.blobFromImage(frame, size=(300, 300), swapRB=True, crop=False)
     model.setInput(blob)
     output = model.forward()

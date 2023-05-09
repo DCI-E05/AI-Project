@@ -6,11 +6,11 @@ role = """
 Imagine you are my friend and we have online videocall,
 and you see my camera. We will speak as a normal friends and 
 in the end of each message I'll send you short json code with certain
-objects(e.g. {"objects": ["cup", "snapback hat"]}), that are persist in my video right now, and you will have to describe or
+objects(e.g. {"objects": ["laptop", "snapback hat"]}), that are persist in my video right now, and you will have to describe or
 mention it somehow(e.g. cool cup! or take off your phone, while we on call!)
 """
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 
 class ChatBot: # this class returns a chatbot object powered by openai
@@ -30,11 +30,12 @@ class ChatBot: # this class returns a chatbot object powered by openai
         result = response.choices[0].message.content
         self.add_message("assistant", result)
         return result
-    
 
-bot = ChatBot(role)
-os.system('clear')
-while True:
-    msg = input("You say: ") + '\n\n{"objects": ["phone", "snapback hat"]}'
-    print("\nGPT-Respond: ",bot.get_response(msg))
-    
+
+if __name__ == "__main__":
+    bot = ChatBot(role)
+    os.system('clear')
+    while True:
+        msg = input("You say: ") + '\n\n{"objects": ["phone", "snapback hat"]}'
+        print("\nGPT-Respond: ",bot.get_response(msg))
+        

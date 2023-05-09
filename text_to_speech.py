@@ -18,8 +18,4 @@ def text_to_speech(text, language="en", slow=False):
     play(audio_segment)
 
 
-text = "Hello, my name s Anton. Every morning I usually get up at seven o'clock and brush my teeth, then I have breakfast and go to school by bus."
-text_to_speech(text, language="ru")
-
-
 

@@ -36,6 +36,7 @@ class CameraThread(QThread):
         super().__init__()
         self._run_flag = True
         self.cap = cv2.VideoCapture(0)
+        self.model = cv2.dnn.readNetFromTensorflow('./model/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph_V2.pb', './model/ssd_mobilenet_v2_coco_2018_03_29/ssd_mobilenet_v2_coco_2018_03_29.pbtxt')
 
     def run(self):
 
@@ -43,7 +44,7 @@ class CameraThread(QThread):
             success, img = self.cap.read()
             if success:
                 # FINISH WORKABILITY OF CHECKBOX
-                frame, results = prepare_image(img, classes, draw_results=True)
+                frame, results = prepare_image(img, classes, self.model, draw_results=True)
                 self.results.emit(results)
                 self.change_frame.emit(frame)
         self.cap.release()
