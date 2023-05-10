@@ -1,8 +1,8 @@
-import sys
+import sys, json
 from PySide6 import QtGui
 from PySide6.QtCore import QThread, Qt, Signal, Slot, QSize
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit, QCheckBox
-from PySide6.QtGui import QPixmap, QImage, QFont
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit, QCheckBox, QGraphicsBlurEffect
+from PySide6.QtGui import QPixmap, QImage, QFont, QColor, QPainter, QBrush
 from pydub import AudioSegment
 from pydub.playback import play
 import markdown
@@ -13,6 +13,9 @@ from names import classes
 
 
 # pip install PySide6
+
+class GPTThread(QThread):
+    pass
 
 class SoundPlayer(QThread):
     finished = Signal(bool)
@@ -39,7 +42,6 @@ class CameraThread(QThread):
         self.model = cv2.dnn.readNetFromTensorflow('./model/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph_V2.pb', './model/ssd_mobilenet_v2_coco_2018_03_29/ssd_mobilenet_v2_coco_2018_03_29.pbtxt')
 
     def run(self):
-
         while self._run_flag:
             success, img = self.cap.read()
             if success:
@@ -54,6 +56,17 @@ class CameraThread(QThread):
         self._run_flag = False
         self.wait()
 
+class JsonReader(QThread):
+    finished = Signal(dict)
+
+    def __init__(self):
+        super().__init__()
+    
+    def run(self):
+        with open('./roles.json') as json_file:
+            roles = json.load(json_file)
+        self.emit(roles)
+
 class VideoChat(QWidget):
     def __init__(self):
         super().__init__()
@@ -62,8 +75,33 @@ class VideoChat(QWidget):
         
         self.setFixedSize(900, 900)
         self.setWindowTitle('GPT Video Chat')
-        self.setStyleSheet('''QWidget {background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                      stop: 0 #240068, stop: 1 #060060); }''')
+        self.setStyleSheet('''QWidget {background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(63, 63, 63), stop: 1 rgb(76, 76, 76));}''')
+        # self.setStyleSheet('''background''')
+#         self.setStyleSheet('''
+#             QWidget {
+#                 background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #240068, stop: 1 #060060);
+#             }
+#             QLabel {
+#                 font-size: 30px;
+#                 color: white;
+#                 text-align: center;
+#                 background-color: none;
+#             }
+#             QPushButton {
+#                 border: 2px solid maroon;
+#                 border-radius: 13px;
+#                 color: maroon;
+#                 font-size: 20px;
+#                 background-color: black;
+#             }
+#             QPushButton:hover {
+#                 border: 3px solid white;
+#             }
+#             QPushButton:disabled {
+#                 border: 2px solid rgba(83, 1, 1, 0.69);
+#                 blur(10px);
+#             }
+# ''')
 
         self.main_layout = QVBoxLayout()
         self.main_layout.setAlignment(Qt.AlignHCenter)
@@ -90,9 +128,9 @@ background-color: none;""")
         scaled = self.camera_pixmap.scaled(200, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.camera_image.setPixmap(scaled)
         self.camera_image.setAlignment(Qt.AlignCenter)
-        self.camera_image.setStyleSheet("""border: 5px solid maroon;
+        self.camera_image.setStyleSheet("""border: 5px solid rgb(255, 171, 37);
 border-radius: 13px;
-background-color: black;""")
+background-color: rgba(255, 168, 38, 0.15);""")
 
         
         self.chat_layout = QVBoxLayout()
@@ -101,14 +139,15 @@ background-color: black;""")
         self.chat_browser.setAcceptRichText(True)
         self.chat_browser.setFixedSize(640, 360)
         self.chat_browser.setReadOnly(True)
-        html = markdown.markdown("# Welcome to chat with GPT!\ndfghfgh\ndfgh\ndfghd\nsadfgfasdfa\nfdgh\n\nasdfasdf\nsdfgs\ndfsgsdfg\nsdfgsdfgs\nsdfgsdfg\nsdfgsdfg\nsdfgasdfas")
-        html = '\n'.join(classes)
-        self.chat_browser.setText(html)
-        self.chat_browser.setStyleSheet("""border: 5px solid maroon;
+        md = markdown.markdown("# Welcome to chat with GPT!")
+        # md = '\n'.join(classes)
+        self.chat_browser.setText(md)
+        self.chat_browser.setStyleSheet("""border: 5px solid rgb(219, 135, 0);
 border-radius: 13px;
-color: maroon;
+color: rgb(219, 135, 0);
 text-align: center;
-background-color: black;""")
+background-color: rgba(205, 203, 208, 0.15);
+""")
 
 
         # CAMERA THREAD                                        
@@ -131,16 +170,15 @@ background-color: black;""")
         self.say_button.setIcon(self.say_button_icon)
         self.say_button.setIconSize(QSize(50, 50))
         self.say_button.setStyleSheet("""QPushButton {
-border: 3px solid maroon;
+border: 3px solid rgb(255, 171, 37);
 border-radius: 13px;
-color: maroon;
+color: rgb(255, 171, 37);
 font-size: 20px;
-background-color: black;
+background-color: rgba(205, 203, 208, 0.15);
 }
 
 QPushButton:hover {
 border: 4px solid white;
-background-color: black;
 }
 """)
         self.say_button.setFixedSize(200, 100)
@@ -152,11 +190,11 @@ background-color: black;
         self.call_button.setIcon(self.call_button_icon)
         self.call_button.setIconSize(QSize(50, 50))
         self.call_button.setStyleSheet("""QPushButton {
-border: 3px solid maroon;
+border: 3px solid rgb(219, 135, 0);
 border-radius: 13px;
-color: maroon;
+color: rgb(102, 102, 102);
 font-size: 20px;
-background-color: black;
+background-color: rgb(219, 135, 0);
 }
 
 QPushButton:hover {
@@ -165,7 +203,7 @@ border: 4px solid white;
 
 QPushButton:disabled {
 border: 2px solid rgba(83, 1, 1, 0.69);
-blur(10px);
+blur(20px);
 }
 """)
         self.call_button.clicked.connect(self.start_camera)
@@ -177,11 +215,11 @@ blur(10px);
         self.exit_button.setIconSize(QSize(50, 50))
         self.exit_button.clicked.connect(self.exit_app)
         self.exit_button.setStyleSheet("""QPushButton {
-border: 3px solid maroon;
+border: 3px solid rgb(255, 171, 37);
 border-radius: 13px;
-color: maroon;
+color: rgb(255, 171, 37);
 font-size: 20px;
-background-color: black;
+background-color: rgba(205, 203, 208, 0.15);
 }
 
 QPushButton:hover {
