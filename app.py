@@ -1,8 +1,8 @@
 import sys, json
 from PySide6 import QtGui
 from PySide6.QtCore import QThread, Qt, Signal, Slot, QSize
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit, QCheckBox, QGraphicsBlurEffect
-from PySide6.QtGui import QPixmap, QImage, QFont, QColor, QPainter, QBrush
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit, QCheckBox, QComboBox
+from PySide6.QtGui import QPixmap, QImage, QFont
 from pydub import AudioSegment
 from pydub.playback import play
 import markdown
@@ -13,6 +13,9 @@ from names import classes
 
 
 # pip install PySide6
+
+class VoiceListener(QThread):
+    pass
 
 class GPTThread(QThread):
     pass
@@ -65,7 +68,7 @@ class JsonReader(QThread):
     def run(self):
         with open('./roles.json') as json_file:
             roles = json.load(json_file)
-        self.emit(roles)
+        self.finished.emit(roles)
 
 class VideoChat(QWidget):
     def __init__(self):
@@ -76,32 +79,6 @@ class VideoChat(QWidget):
         self.setFixedSize(900, 900)
         self.setWindowTitle('GPT Video Chat')
         self.setStyleSheet('''QWidget {background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(63, 63, 63), stop: 1 rgb(76, 76, 76));}''')
-        # self.setStyleSheet('''background''')
-#         self.setStyleSheet('''
-#             QWidget {
-#                 background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #240068, stop: 1 #060060);
-#             }
-#             QLabel {
-#                 font-size: 30px;
-#                 color: white;
-#                 text-align: center;
-#                 background-color: none;
-#             }
-#             QPushButton {
-#                 border: 2px solid maroon;
-#                 border-radius: 13px;
-#                 color: maroon;
-#                 font-size: 20px;
-#                 background-color: black;
-#             }
-#             QPushButton:hover {
-#                 border: 3px solid white;
-#             }
-#             QPushButton:disabled {
-#                 border: 2px solid rgba(83, 1, 1, 0.69);
-#                 blur(10px);
-#             }
-# ''')
 
         self.main_layout = QVBoxLayout()
         self.main_layout.setAlignment(Qt.AlignHCenter)
@@ -159,6 +136,14 @@ background-color: rgba(205, 203, 208, 0.15);
         self.buttons_layout = QVBoxLayout()
         self.buttons_layout.setAlignment(Qt.AlignCenter)
 
+        # Combobox to chose the role
+        self.roles_combobox = QComboBox()
+        self.json_read_thread = JsonReader()
+        self.json_read_thread.finished.connect(self.apply_json)
+        self.json_read_thread.run()
+
+
+        # Checkbox to turn on/off the bound boxes
         self.boxes_check = QCheckBox(text="Show bound boxes")
         self.boxes_check.setChecked(False)
         self.boxes_check.setStyleSheet('background: transparent;')
@@ -242,6 +227,7 @@ border: 4px solid white;
         self.chat_layout.addWidget(self.chat_browser)
 
         # BUTTONS
+        self.buttons_layout.addWidget(self.roles_combobox)
         self.buttons_layout.addWidget(self.boxes_check)
         self.buttons_layout.addWidget(self.call_button)
         self.buttons_layout.addWidget(self.say_button)
@@ -258,6 +244,14 @@ border: 4px solid white;
             CameraThread.bboxes = False
         else:
             CameraThread.bboxes = True
+
+    @Slot(dict)
+    def apply_json(self, roles):
+        items = list(roles.keys())
+        items.insert(0, "Choose a role...")
+        self.roles_combobox.addItems(items)
+        self.roles_dict = roles
+        self.roles_combobox.setCurrentText("Choose a role...")
             
 
     def start_camera(self):
