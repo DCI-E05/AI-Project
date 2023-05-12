@@ -13,6 +13,7 @@ import numpy as np
 from object_recognition import prepare_image
 from voice import speech_to_text
 from names import classes
+from queue import Queue
 
 
 # pip install PySide6
@@ -46,6 +47,13 @@ class ThreadManager:
     def __init__(self):
         self.listener_thread = VoiceListener()
         self.gpt_thread = GPTThread()
+        self.listener_thread.start()#
+        self.thread_queue = Queue()
+        self.thread_queue.put(self.gpt_thread)
+
+    def button_say_pressed(self):
+        next_thread = self.thread_queue.get()
+        next_thread.start()#
 
 class SoundPlayer(QThread):
     finished = Signal(bool)
