@@ -93,7 +93,8 @@ class VideoChat(QWidget):
         self.title.setAlignment(Qt.AlignHCenter)
         self.title.setStyleSheet("""font-size: 30px;
 text-align: center;
-color: maroon;
+font-weight: 700;
+color: rgb(219, 135, 0);
 background-color: none;""")
 
         
@@ -105,9 +106,9 @@ background-color: none;""")
         scaled = self.camera_pixmap.scaled(200, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.camera_image.setPixmap(scaled)
         self.camera_image.setAlignment(Qt.AlignCenter)
-        self.camera_image.setStyleSheet("""border: 5px solid rgb(255, 171, 37);
+        self.camera_image.setStyleSheet("""border: 5px solid rgb(219, 135, 0);
 border-radius: 13px;
-background-color: rgba(255, 168, 38, 0.15);""")
+background-color: rgba(205, 203, 208, 0.15);""")
 
         
         self.chat_layout = QVBoxLayout()
@@ -138,6 +139,32 @@ background-color: rgba(205, 203, 208, 0.15);
 
         # Combobox to chose the role
         self.roles_combobox = QComboBox()
+        self.roles_combobox.setStyleSheet("""QComboBox {
+  background: rgb(102, 102, 102);
+  border: 3px solid rgb(219, 135, 0);
+  border-radius: 13px;
+  padding: 2px 18px 2px 3px;
+  color: #FFFFFF;
+}
+QComboBox:editable {
+  background: rgb(219, 135, 0);
+}
+QComboBox:!editable,
+QComboBox::drop-down:editable,
+QComboBox:!editable:on,
+QComboBox::drop-down:editable:on {
+  background: rgb(219, 135, 0);
+}
+QComboBox::drop-down {
+  subcontrol-origin: padding;
+  subcontrol-position: top right;
+  border-left: none;
+}
+
+QComboBox QAbstractItemView {
+  background: none;
+}""")
+        self.roles_combobox.setFixedHeight(50)
         self.json_read_thread = JsonReader()
         self.json_read_thread.finished.connect(self.apply_json)
         self.json_read_thread.run()
@@ -146,7 +173,12 @@ background-color: rgba(205, 203, 208, 0.15);
         # Checkbox to turn on/off the bound boxes
         self.boxes_check = QCheckBox(text="Show bound boxes")
         self.boxes_check.setChecked(False)
-        self.boxes_check.setStyleSheet('background: transparent;')
+        self.boxes_check.setFixedHeight(50)
+        
+        self.boxes_check.setStyleSheet("""background: transparent;
+border: 2px solid rgb(219, 135, 0);
+border-radius: 13px;
+color: rgb(219, 135, 0)""")
         self.boxes_check.clicked.connect(self.show_boxes)
         
 
@@ -155,11 +187,11 @@ background-color: rgba(205, 203, 208, 0.15);
         self.say_button.setIcon(self.say_button_icon)
         self.say_button.setIconSize(QSize(50, 50))
         self.say_button.setStyleSheet("""QPushButton {
-border: 3px solid rgb(255, 171, 37);
+border: 3px solid rgb(219, 135, 0);
 border-radius: 13px;
-color: rgb(255, 171, 37);
+color: rgb(102, 102, 102);
 font-size: 20px;
-background-color: rgba(205, 203, 208, 0.15);
+background-color: rgb(219, 135, 0);
 }
 
 QPushButton:hover {
@@ -200,11 +232,11 @@ blur(20px);
         self.exit_button.setIconSize(QSize(50, 50))
         self.exit_button.clicked.connect(self.exit_app)
         self.exit_button.setStyleSheet("""QPushButton {
-border: 3px solid rgb(255, 171, 37);
+border: 3px solid rgb(219, 135, 0);
 border-radius: 13px;
-color: rgb(255, 171, 37);
+color: rgb(102, 102, 102);
 font-size: 20px;
-background-color: rgba(205, 203, 208, 0.15);
+background-color: rgb(219, 135, 0);
 }
 
 QPushButton:hover {
