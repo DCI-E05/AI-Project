@@ -2,20 +2,35 @@ import sys, json
 from PySide6 import QtGui
 from PySide6.QtCore import QThread, Qt, Signal, Slot, QSize
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit, QCheckBox, QComboBox
-from PySide6.QtGui import QPixmap, QImage, QFont
+from PySide6.QtGui import QPixmap, QImage, QFont, QMovie
 from pydub import AudioSegment
 from pydub.playback import play
+import speech_recognition as sr
 import markdown
 import cv2
 import numpy as np
 from object_recognition import prepare_image
+from voice import speech_to_text
 from names import classes
 
 
 # pip install PySide6
 
 class VoiceListener(QThread):
-    pass
+    finished = Signal(str)
+
+    def __init__(self, mic, rec):
+        super().__init__()
+        self.rec = rec
+        self.mic = mic
+
+    def run(self):
+        result = speech_to_text(self.mic, self.rec)
+        # if result:
+        self.finished.emit(result)
+
+    def stop(self):
+        self.wait()
 
 class GPTThread(QThread):
     pass
@@ -75,6 +90,9 @@ class VideoChat(QWidget):
         super().__init__()
         self.__initial_sound_finished = False
         self.__on_frame = []
+
+        self.microphone = sr.Microphone()
+        self.recognizer = sr.Recognizer()
         
         self.setFixedSize(900, 900)
         self.setWindowTitle('GPT Video Chat')
@@ -197,8 +215,16 @@ background-color: rgb(219, 135, 0);
 QPushButton:hover {
 border: 4px solid white;
 }
+
+QPushButton:disabled {
+color: rgb(219, 135, 0);
+border: 3px solid rgb(143, 143, 143);
+background-color: rgb(143, 143, 143);
+}
 """)
         self.say_button.setFixedSize(200, 100)
+        
+        self.say_button.clicked.connect(self.listen)
 
 
         self.call_button_icon = QPixmap('./icons/call.png')
@@ -219,7 +245,9 @@ border: 4px solid white;
 }
 
 QPushButton:disabled {
-border: 2px solid rgba(83, 1, 1, 0.69);
+color: rgb(219, 135, 0);
+border: 3px solid rgb(143, 143, 143);
+background-color: rgb(143, 143, 143);
 blur(20px);
 }
 """)
@@ -276,6 +304,25 @@ border: 4px solid white;
             CameraThread.bboxes = False
         else:
             CameraThread.bboxes = True
+            
+    def listen(self):
+        self.say_button.setDisabled(True)
+        self.listener_thread = VoiceListener(self.microphone, self.recognizer)
+        self.listener_thread.finished.connect(self.listened_results)
+        self.listener_thread.start()
+
+    @Slot(str)
+    def listened_results(self, result):
+        print(result)
+        current_value = self.chat_browser.toMarkdown()
+        current_value += "\n\n**You:** " + "*" + result + "*"
+        new_markdown = markdown.markdown(current_value)
+        self.chat_browser.setText(new_markdown)
+        # self.listener_thread.stop()
+        print(current_value)
+        self.say_button.setDisabled(False)
+
+
 
     @Slot(dict)
     def apply_json(self, roles):
