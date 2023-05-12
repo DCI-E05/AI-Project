@@ -1,6 +1,7 @@
 import sys, json
+from typing import Optional
 from PySide6 import QtGui
-from PySide6.QtCore import QThread, Qt, Signal, Slot, QSize
+from PySide6.QtCore import QThread, Qt, Signal, Slot, QSize, QThreadPool
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit, QCheckBox, QComboBox
 from PySide6.QtGui import QPixmap, QImage, QFont, QMovie
 from pydub import AudioSegment
@@ -15,6 +16,8 @@ from names import classes
 
 
 # pip install PySide6
+
+        
 
 class VoiceListener(QThread):
     finished = Signal(str)
@@ -33,7 +36,16 @@ class VoiceListener(QThread):
         self.wait()
 
 class GPTThread(QThread):
-    pass
+    finished = Signal(str)
+
+    def __init__(self):
+        super().__init__()
+        
+
+class ThreadManager:
+    def __init__(self):
+        self.listener_thread = VoiceListener()
+        self.gpt_thread = GPTThread()
 
 class SoundPlayer(QThread):
     finished = Signal(bool)
@@ -183,6 +195,7 @@ QComboBox QAbstractItemView {
   background: none;
 }""")
         self.roles_combobox.setFixedHeight(50)
+        self.roles_combobox.currentIndexChanged.connect(self.combobox_changed)
         self.json_read_thread = JsonReader()
         self.json_read_thread.finished.connect(self.apply_json)
         self.json_read_thread.run()
@@ -304,6 +317,9 @@ border: 4px solid white;
             CameraThread.bboxes = False
         else:
             CameraThread.bboxes = True
+
+    def combobox_changed(self):
+        print(self.roles_combobox.currentText())
             
     def listen(self):
         self.say_button.setDisabled(True)
@@ -318,7 +334,6 @@ border: 4px solid white;
         current_value += "\n\n**You:** " + "*" + result + "*"
         new_markdown = markdown.markdown(current_value)
         self.chat_browser.setText(new_markdown)
-        # self.listener_thread.stop()
         print(current_value)
         self.say_button.setDisabled(False)
 
