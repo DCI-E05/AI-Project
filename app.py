@@ -1,5 +1,4 @@
 import sys, json
-from typing import Optional
 from PySide6 import QtGui
 from PySide6.QtCore import QThread, Qt, Signal, Slot, QSize, QThreadPool
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QApplication, QLabel, QPushButton, QTextEdit, QCheckBox, QComboBox
@@ -14,7 +13,7 @@ import numpy as np
 from object_recognition import prepare_image
 from gpt_requests import ChatBot
 from voice import speech_to_text
-#from voice_recognition import SpeechToTextThread
+# from voice_recognition import SpeechToTextThread
 from names import classes
 from queue import Queue
 
@@ -24,6 +23,7 @@ from queue import Queue
         
 
 class SpeechToTextThread(QThread):
+    finished = Signal(bool)
     recognized_text = Signal(str)
 
     def __init__(self, recog: sr.Recognizer, micro: sr.Microphone):
@@ -67,16 +67,11 @@ class SpeechToTextThread(QThread):
 
     def stop_listening(self):
         self.stop_micro(wait_for_stop=True)
-        # while self.all_text == "":
-        #     time.sleep(0.5)
-        # else:
-        #     time.sleep(1)
         self.recognized_text.emit(self.all_text[1:])
         self.all_text = ""
         self._run_flag = False
         
     def stop(self):
-        # self.recognized_text.emit(self.all_text)
         self.stopped = True
         self.quit()
     
@@ -129,21 +124,52 @@ class CameraThread(QThread):
         self._run_flag = True
         self.cap = cv2.VideoCapture(0)
         self.model = cv2.dnn.readNetFromTensorflow('./model/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph_V2.pb', './model/ssd_mobilenet_v2_coco_2018_03_29/ssd_mobilenet_v2_coco_2018_03_29.pbtxt')
+        self.object_recognizer = ObjectRecognizer()
+        self.object_recognizer.finished.connect(self.recognition_finished)
+        self.object_recognizer.results.connect(self.emit_results)
+        self.recog_finished = bool(True)
 
     def run(self):
         while self._run_flag:
             success, img = self.cap.read()
             if success:
+                if self.recog_finished:
+                    self.object_recognizer.run(img, self.model)
+                    self.recog_finished = False
                 # FINISH WORKABILITY OF CHECKBOX
-                frame, results = prepare_image(img, classes, self.model, draw_results=True)
-                self.results.emit(results)
-                self.change_frame.emit(frame)
+                # frame, results = prepare_image(img, classes, self.model, draw_results=True)
+                self.change_frame.emit(img)
         self.cap.release()
+
+    @Slot(list)
+    def emit_results(self, results):
+        print(results)
+        self.results.emit(results)
+    
+    @Slot(bool)
+    def recognition_finished(self, finished):
+        print(finished)
+        if finished:
+            self.recognition_finished = True
+
 
     def stop(self):
         """Termiantes the QThread and wait until proccess will be closed"""
         self._run_flag = False
         self.wait()
+
+
+class ObjectRecognizer(QThread):
+    finished = Signal(bool)
+    results = Signal(list)
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self, frame, model):
+        res = prepare_image(frame, classes, model)
+        self.results.emit(res)
+        self.finished.emit(True)
 
 class JsonReader(QThread):
     finished = Signal(dict)
@@ -259,10 +285,10 @@ QComboBox QAbstractItemView {
   background: none;
 }""")
         self.roles_combobox.setFixedHeight(50)
-        self.roles_combobox.currentIndexChanged.connect(self.combobox_changed)
         self.json_read_thread = JsonReader()
         self.json_read_thread.finished.connect(self.apply_json)
         self.json_read_thread.run()
+        self.roles_combobox.currentIndexChanged.connect(self.combobox_changed) 
 
 
         # Checkbox to turn on/off the bound boxes
@@ -381,12 +407,11 @@ border: 4px solid white;
         else:
             CameraThread.bboxes = True
 
-    def combobox_changed(self):
-        print(self.roles_combobox.currentText())
         
     def toggle_listening(self):
         if not self.is_listening:
             self.speech_to_text_thread.start_listening()
+            # self.speech_to_text_thread.finished.connect(self.speech_to_text_thread.deleteLater) 
             self.is_listening = True
             self.say_button.setText("Stop")
         else:
@@ -414,7 +439,13 @@ border: 4px solid white;
         self.roles_combobox.addItems(items)
         self.roles_dict = roles
         self.roles_combobox.setCurrentText("Choose a role...")
+        self.json_read_thread.wait()
             
+
+    def combobox_changed(self):
+        # print(self.roles_combobox.currentText())
+        # print(self.roles_dict[self.roles_combobox.currentText()])
+        self.gpt_instace = GPTThread(self.roles_dict[self.roles_combobox.currentText()])
 
     def start_camera(self):
         self.camera_thread.start()
@@ -451,7 +482,7 @@ border: 4px solid white;
     @Slot(list)
     def update_results(self, results):
         self.__on_frame = results
-        # print(self.__on_frame)
+        print(self.__on_frame)
 
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
