@@ -12,6 +12,7 @@ import time
 import re
 import numpy as np
 from object_recognition import prepare_image
+from text_to_speech import TextToSpeech
 from gpt_requests import ChatBot
 from voice import speech_to_text
 # from voice_recognition import SpeechToTextThread
@@ -26,11 +27,20 @@ from queue import Queue
 class TextToSpeechThread(QThread):
     finished = Signal(bool)
 
-    def __init__(self):
+    def __init__(self, role):
         super().__init__()
+        self.tts = TextToSpeech(role)
+        self.text = ''
     
+    def set_text(self, new_text):
+        self.text = new_text
+
+    def set_voice(self, new_role):
+        self.tts.set_voice(new_role)
+
     def run(self):
-        pass
+        self.tts.speak(self.text)
+        self.finished.emit(True)
 
 class SpeechToTextThread(QThread):
     finished = Signal(bool)
@@ -191,7 +201,6 @@ class ObjectRecognizer(QThread):
         self._model = model
 
     def run(self, frame, model):
-
         res = prepare_image(frame, classes, model)
         self.results.emit(res)
         self.finished.emit(True)
@@ -221,7 +230,7 @@ class VideoChat(QWidget):
         self.microphone = sr.Microphone()
         self.recognizer = sr.Recognizer()
         self.speech_to_text_thread = SpeechToTextThread(self.recognizer, self.microphone)
-        
+
         self.speech_to_text_thread.recognized_text.connect(self.listened_results)
         self.is_listening = False
         
@@ -318,7 +327,13 @@ QComboBox QAbstractItemView {
         self.json_read_thread.finished.connect(self.apply_json)
         self.json_read_thread.run()
         self.roles_combobox.currentIndexChanged.connect(self.combobox_changed)
+        # self.roles_combobox.currentIndexChanged.connect(self.set_avatar)
         
+        self.avatar = QLabel()
+        self.avatar.setFixedSize(200, 200)
+        self.avatar.setAlignment(Qt.AlignCenter)
+        self.avatar.setStyleSheet("background: none;")
+
 
         self.say_button_icon = QPixmap('./icons/microphone.png')
         self.say_button = QPushButton(text="Say")
@@ -406,6 +421,7 @@ border: 4px solid white;
         self.chat_layout.addWidget(self.chat_browser)
 
         # BUTTONS
+        self.buttons_layout.addWidget(self.avatar)
         self.buttons_layout.addWidget(self.roles_combobox)
         self.buttons_layout.addWidget(self.call_button)
         self.buttons_layout.addWidget(self.say_button)
@@ -428,8 +444,8 @@ border: 4px solid white;
             self.speech_to_text_thread.stop_listening()
             self.is_listening = False
             self.say_button.setText("Say")
-            self.say_button.setDisabled(True)
             if len(self.speech_result) > 0:
+                self.say_button.setDisabled(True)
                 self.gpt_instace.set_user_input(self.speech_result)
                 self.gpt_instace.start()
 
@@ -438,18 +454,66 @@ border: 4px solid white;
     def listened_results(self, result):
         self.speech_result = result
         current_value = self.chat_browser.toMarkdown()
-        current_value += "\n\n**You:** " + "*" + result + "*"
-        current_value += f"\n**Objects:** *" + ", ".join(self.__on_frame) + "*"
+        if result:
+            current_value += "\n\n**You:** " + "*" + result + "*"
+            current_value += f"\n**Objects:** *" + ", ".join(self.__on_frame) + "*"
+        else:
+            current_value += "\n\n## Voice recognizer didn't got you! Try again."
         new_markdown = markdown2.markdown(current_value, extras=["fenced-code-blocks", "tables", "break-on-newline"])
         self.chat_browser.setHtml(new_markdown)
         self.say_button.setDisabled(False)
+        self.chat_browser.ensureCursorVisible()
 
     @Slot(str)
     def retrieve_response(self, response):
+        self.tts_thread.set_text(response)
+        self.tts_thread.start()
         current_value = self.chat_browser.toMarkdown()
         current_value += f"\n\n**{self.roles_combobox.currentText()}**: " + response
         new_markdown = markdown2.markdown(current_value, extras=["fenced-code-blocks", "tables", "break-on-newline"])
         self.chat_browser.setHtml(new_markdown)
+        self.chat_browser.ensureCursorVisible()
+
+    def set_avatar(self):
+        role = self.roles_combobox.currentText()
+        if role == "Batman" or role == 'Batman Rogue':
+            image = QPixmap("./roles_icons/batman.png")
+        elif role == "Eminem":
+            image = QPixmap("./roles_icons/eminem.png")
+        elif role == "Crackhead":
+            image = QPixmap("./roles_icons/crackhead.png")
+        elif role == "Crusader":
+            image = QPixmap("./roles_icons/crusader.png")
+        elif role == "Markus":
+            image = QPixmap("./roles_icons/Markus.png")
+        elif role == "Employee-kaufland":
+            image = QPixmap("./roles_icons/kaufland.png")
+        elif role == "Mike Tyson":
+            image = QPixmap("./roles_icons/tyson.png")
+        if role != 'Choose a role...':
+            self.avatar.setPixmap(image)
+        self.avatar.setScaledContents(True)
+    
+    def set_movie(self):
+        role = self.roles_combobox.currentText()
+        if role == "Batman" or role == 'Batman Rogue':
+            animation = QMovie("./roles_anims/batman.gif")
+        if role == "Eminem":
+            animation = QMovie("./roles_anims/eminem.gif")
+        if role == "Crackhead":
+            animation = QMovie("./roles_anims/crackhead.gif")
+        if role == "Crusader":
+            animation = QMovie("./roles_anims/crusader_anim.gif")
+        if role == "Markus":
+            animation = QMovie("./roles_anims/Markus.gif")
+        if role == "Employee-kaufland":
+            animation = QMovie("./roles_anims/kaufland.gif")
+        if role == "Mike Tyson":
+            animation = QMovie("./roles_anims/tyson.gif")
+        self.avatar.setMovie(animation)
+        animation.start()
+
+    def tts_finished(self):
         self.say_button.setDisabled(False)
 
     @Slot(dict)
@@ -462,14 +526,24 @@ border: 4px solid white;
         self.json_read_thread.wait()
         self.gpt_instace = GPTThread(self.roles_dict['Batman'])
         self.gpt_instace.response.connect(self.retrieve_response)
+        self.tts_thread = TextToSpeechThread("Batman")
+        self.tts_thread.finished.connect(self.tts_finished)
             
 
     def combobox_changed(self):
+        if not self.call_button.isEnabled():
+            self.set_movie()
+        else:
+            self.set_avatar()
+        self.avatar.setScaledContents(True)
+            
         md = markdown2.markdown("# Welcome to chat with GPT!", extras=["fenced-code-blocks", "tables", "break-on-newline"])
         self.chat_browser.setText(md)
         new_role = self.roles_dict[self.roles_combobox.currentText()]
         self.gpt_instace.wait()
+        self.tts_thread.wait()
         self.gpt_instace.change_role(new_role)
+        self.tts_thread.set_voice(self.roles_combobox.currentText())
 
     def start_camera(self):
         self.camera_thread.start()
@@ -483,6 +557,7 @@ border: 4px solid white;
         self.play_accepted_call = SoundPlayer('./sounds/notification-on.mp3')
         self.play_accepted_call.finished.connect(self.play_accepted_call.deleteLater)
         self.play_accepted_call.start()
+        self.set_movie()
         self.__initial_sound_finished = True
 
     @Slot(np.ndarray)
