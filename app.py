@@ -127,24 +127,24 @@ class CameraThread(QThread):
         self.object_recognizer.finished.connect(self.recognition_finished)
         self.object_recognizer.results.connect(self.emit_results)
         self.recog_finished = bool(True)
+        self.last_recognition_time = time.time() # track when the last recognition was done
 
     def run(self):
-        success, img = self.cap.read()
-        self.object_recognizer.set_image(img, self.model)
-        self.object_recognizer.start()
         while self._run_flag:
             success, img = self.cap.read()
             if success:
-                # if not self.recog_finished:
-                #     self.recog_finished = True
+                current_time = time.time()
+                if self.recog_finished and current_time - self.last_recognition_time >= 1:
+                    self.object_recognizer.run(img, self.model)
+                    self.recog_finished = False
+                    self.last_recognition_time = current_time
                 self.change_frame.emit(img)
-                self.object_recognizer.set_image(img, self.model)
-        self.recog_finished = True
         self.cap.release()
 
     @Slot(list)
     def emit_results(self, results):
         self.results.emit(results)
+        self.recog_finished = True
     
     @Slot(bool)
     def recognition_finished(self, finished):
@@ -170,11 +170,11 @@ class ObjectRecognizer(QThread):
         self._frame = frame
         self._model = model
 
-    def run(self):
-        while not self.stop:
-            res = prepare_image(self._frame, classes, self._model)
-            self.results.emit(res)
-            self.finished.emit(True)
+    def run(self, frame, model):
+
+        res = prepare_image(frame, classes, model)
+        self.results.emit(res)
+        self.finished.emit(True)
 
     def stop_thread(self):
         self.stop = True
@@ -248,7 +248,6 @@ background-color: rgba(205, 203, 208, 0.15);""")
         self.chat_browser.setFixedSize(640, 360)
         self.chat_browser.setReadOnly(True)
         md = markdown.markdown("# Welcome to chat with GPT!")
-        # md = '\n'.join(classes)
         self.chat_browser.setText(md)
         self.chat_browser.setStyleSheet("""border: 5px solid rgb(219, 135, 0);
 border-radius: 13px;
@@ -298,19 +297,7 @@ QComboBox QAbstractItemView {
         self.json_read_thread = JsonReader()
         self.json_read_thread.finished.connect(self.apply_json)
         self.json_read_thread.run()
-        self.roles_combobox.currentIndexChanged.connect(self.combobox_changed) 
-
-
-        # Checkbox to turn on/off the bound boxes
-        self.boxes_check = QCheckBox(text="Show bound boxes")
-        self.boxes_check.setChecked(False)
-        self.boxes_check.setFixedHeight(50)
-        
-        self.boxes_check.setStyleSheet("""background: transparent;
-border: 2px solid rgb(219, 135, 0);
-border-radius: 13px;
-color: rgb(219, 135, 0)""")
-        self.boxes_check.clicked.connect(self.show_boxes)
+        self.roles_combobox.currentIndexChanged.connect(self.combobox_changed)
         
 
         self.say_button_icon = QPixmap('./icons/microphone.png')
@@ -400,7 +387,6 @@ border: 4px solid white;
 
         # BUTTONS
         self.buttons_layout.addWidget(self.roles_combobox)
-        self.buttons_layout.addWidget(self.boxes_check)
         self.buttons_layout.addWidget(self.call_button)
         self.buttons_layout.addWidget(self.say_button)
         self.buttons_layout.addWidget(self.exit_button)
@@ -410,12 +396,6 @@ border: 4px solid white;
 
         self.setLayout(self.main_layout)
         self.show()
-
-    def show_boxes(self):
-        if self.boxes_check.isChecked():
-            CameraThread.bboxes = False
-        else:
-            CameraThread.bboxes = True
 
         
     def toggle_listening(self):
@@ -435,9 +415,10 @@ border: 4px solid white;
         #print(self.recognized_text)
         current_value = self.chat_browser.toMarkdown()
         current_value += "\n\n**You:** " + "*" + result  + "*"
+        current_value += f"\n**Objects:** *" + ", ".join(self.__on_frame) + "*"
         new_markdown = markdown.markdown(current_value)
         self.chat_browser.setText(new_markdown)
-        print(current_value)
+        # print(current_value)
         #self.say_button.setDisabled(False)
 
 
@@ -453,8 +434,6 @@ border: 4px solid white;
             
 
     def combobox_changed(self):
-        # print(self.roles_combobox.currentText())
-        # print(self.roles_dict[self.roles_combobox.currentText()])
         self.gpt_instace = GPTThread(self.roles_dict[self.roles_combobox.currentText()])
 
     def start_camera(self):
