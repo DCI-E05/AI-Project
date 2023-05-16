@@ -9,9 +9,10 @@ from pydub.playback import play
 import speech_recognition as sr
 import markdown
 import cv2
-import threading
+import time
 import numpy as np
 from object_recognition import prepare_image
+from gpt_requests import ChatBot
 from voice import speech_to_text
 #from voice_recognition import SpeechToTextThread
 from names import classes
@@ -25,26 +26,34 @@ from queue import Queue
 class SpeechToTextThread(QThread):
     recognized_text = Signal(str)
 
-    def __init__(self):
+    def __init__(self, recog: sr.Recognizer, micro: sr.Microphone):
         super().__init__()
-        self.recognizer = sr.Recognizer()
+        self.recognizer = recog
+        self.microphone = micro
+        with self.microphone as source:
+            self.recognizer.adjust_for_ambient_noise(source, 1)
+        self.all_text = ""
         self._run_flag = True
         self.stopped = False
 
     def run(self):
-        while not self.stopped:
-            while self._run_flag:
-                with sr.Microphone() as source:
-                    print("Listening...")
-                    audio = self.recognizer.listen(
-                        source, timeout=2, phrase_time_limit=5)
-                    self.process_audio(audio)
+        self.stop_micro = self.recognizer.listen_in_background(self.microphone, phrase_time_limit=6, callback=self.process_audio)
+        print("Listening...")
+        # while not self.stopped:
+        #     while self._run_flag:
+        #         pass
+        # self.stop_micro(wait_for_stop=False)
+                    # audio = self.recognizer.listen(source, 10)
+                    # audio = self.recognizer.record(source, 3)
+                    # self.process_audio(audio)
+                    # time.sleep(1)
 
-    def process_audio(self, audio):
+    def process_audio(self, recognizer, audio):
         try:
-            text = self.recognizer.recognize_google(audio)
-            print("You said: ", text)
-            self.recognized_text.emit(text)
+            text = recognizer.recognize_google(audio)
+            self.all_text += f" {text}"
+            # time.sleep(1)
+            print("You said:", self.all_text)
         except sr.UnknownValueError:
             print("Google Speech Recognition could not understand the audio")
         except sr.RequestError as e:
@@ -57,9 +66,17 @@ class SpeechToTextThread(QThread):
         self.start()
 
     def stop_listening(self):
+        self.stop_micro(wait_for_stop=True)
+        # while self.all_text == "":
+        #     time.sleep(0.5)
+        # else:
+        #     time.sleep(1)
+        self.recognized_text.emit(self.all_text[1:])
+        self.all_text = ""
         self._run_flag = False
         
     def stop(self):
+        # self.recognized_text.emit(self.all_text)
         self.stopped = True
         self.quit()
     
@@ -67,15 +84,19 @@ class SpeechToTextThread(QThread):
 class GPTThread(QThread):
     finished = Signal(str)
 
-    def __init__(self):
+    def __init__(self, role):
         super().__init__()
+        self.role = role
+        self.chatbot = ChatBot(self.role)
         
+    def run(self):
+        self.chatbot.get_response()
 
 class ThreadManager:
     def __init__(self):
         #self.mic_event = threading.Event()
         #self.listener_thread = VoiceListener()
-        self.listener_thread = SpeechToTextThread()
+        # self.listener_thread = SpeechToTextThread()
         self.gpt_thread = GPTThread()
         #self.listener_thread.start()#
         self.thread_queue = Queue()
@@ -140,7 +161,11 @@ class VideoChat(QWidget):
         super().__init__()
         self.__initial_sound_finished = False
         self.__on_frame = []
-        self.speech_to_text_thread = SpeechToTextThread()
+
+        self.microphone = sr.Microphone()
+        self.recognizer = sr.Recognizer()
+        self.speech_to_text_thread = SpeechToTextThread(self.recognizer, self.microphone)
+        
         self.speech_to_text_thread.recognized_text.connect(self.listened_results)
         self.is_listening = False
         
@@ -374,7 +399,7 @@ border: 4px solid white;
     def listened_results(self, result):
         #print(self.recognized_text)
         current_value = self.chat_browser.toMarkdown()
-        current_value += "\n\n**You:** " + "*" + result + "*"
+        current_value += "\n\n**You:** " + "*" + result  + "*"
         new_markdown = markdown.markdown(current_value)
         self.chat_browser.setText(new_markdown)
         print(current_value)
