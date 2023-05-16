@@ -6,9 +6,10 @@ from PySide6.QtGui import QPixmap, QImage, QFont, QMovie
 from pydub import AudioSegment
 from pydub.playback import play
 import speech_recognition as sr
-import markdown
+import markdown2
 import cv2
 import time
+import re
 import numpy as np
 from object_recognition import prepare_image
 from gpt_requests import ChatBot
@@ -18,9 +19,18 @@ from names import classes
 from queue import Queue
 
 
-# pip install PySide6
+# pip install PySide6 markdown2
 
-        
+
+
+class TextToSpeechThread(QThread):
+    finished = Signal(bool)
+
+    def __init__(self):
+        super().__init__()
+    
+    def run(self):
+        pass
 
 class SpeechToTextThread(QThread):
     finished = Signal(bool)
@@ -109,7 +119,7 @@ class ThreadManager:
 
     def button_say_pressed(self):
         next_thread = self.thread_queue.get()
-        next_thread.start()#
+        next_thread.start()
 
 class SoundPlayer(QThread):
     finished = Signal(bool)
@@ -257,8 +267,8 @@ background-color: rgba(205, 203, 208, 0.15);""")
         self.chat_browser.setAcceptRichText(True)
         self.chat_browser.setFixedSize(640, 360)
         self.chat_browser.setReadOnly(True)
-        md = markdown.markdown("# Welcome to chat with GPT!")
-        self.chat_browser.setText(md)
+        md = markdown2.markdown("# Welcome to chat with GPT!", extras=["fenced-code-blocks", "tables", "break-on-newline"])
+        self.chat_browser.setHtml(md)
         self.chat_browser.setStyleSheet("""border: 5px solid rgb(219, 135, 0);
 border-radius: 13px;
 color: rgb(219, 135, 0);
@@ -429,17 +439,18 @@ border: 4px solid white;
         self.speech_result = result
         current_value = self.chat_browser.toMarkdown()
         current_value += "\n\n**You:** " + "*" + result + "*"
-        current_value += f"**Objects:** *" + ", ".join(self.__on_frame) + "*"
-        new_markdown = markdown.markdown(current_value)
-        self.chat_browser.setText(new_markdown)
+        current_value += f"\n**Objects:** *" + ", ".join(self.__on_frame) + "*"
+        new_markdown = markdown2.markdown(current_value, extras=["fenced-code-blocks", "tables", "break-on-newline"])
+        self.chat_browser.setHtml(new_markdown)
         self.say_button.setDisabled(False)
 
     @Slot(str)
     def retrieve_response(self, response):
         current_value = self.chat_browser.toMarkdown()
-        current_value += f"**{self.roles_combobox.currentText()}**: " + "\n" + response
-        new_markdown = markdown.markdown(current_value)
-        self.chat_browser.setText(new_markdown)
+        current_value += f"\n\n**{self.roles_combobox.currentText()}**: " + response
+        new_markdown = markdown2.markdown(current_value, extras=["fenced-code-blocks", "tables", "break-on-newline"])
+        self.chat_browser.setHtml(new_markdown)
+        self.say_button.setDisabled(False)
 
     @Slot(dict)
     def apply_json(self, roles):
@@ -454,7 +465,7 @@ border: 4px solid white;
             
 
     def combobox_changed(self):
-        md = markdown.markdown("# Welcome to chat with GPT!")
+        md = markdown2.markdown("# Welcome to chat with GPT!", extras=["fenced-code-blocks", "tables", "break-on-newline"])
         self.chat_browser.setText(md)
         new_role = self.roles_dict[self.roles_combobox.currentText()]
         self.gpt_instace.wait()
@@ -495,7 +506,7 @@ border: 4px solid white;
     @Slot(list)
     def update_results(self, results):
         self.__on_frame = results
-        print(self.__on_frame)
+        # print(self.__on_frame)
 
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
