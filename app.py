@@ -116,7 +116,6 @@ class SoundPlayer(QThread):
 class CameraThread(QThread):
     change_frame = Signal(np.ndarray)
     results = Signal(list)
-    bboxes = False
 
     def __init__(self):
         """Initialize parent's __init__() method and set the run flag of instance"""
@@ -134,23 +133,20 @@ class CameraThread(QThread):
             success, img = self.cap.read()
             if success:
                 if self.recog_finished:
-                    self.object_recognizer.run(img, self.model)
+                    self.object_recognizer.set_image(img, self.model)
+                    self.object_recognizer.start()
                     self.recog_finished = False
-                # FINISH WORKABILITY OF CHECKBOX
-                # frame, results = prepare_image(img, classes, self.model, draw_results=True)
                 self.change_frame.emit(img)
         self.cap.release()
 
     @Slot(list)
     def emit_results(self, results):
-        print(results)
         self.results.emit(results)
     
     @Slot(bool)
     def recognition_finished(self, finished):
-        print(finished)
         if finished:
-            self.recognition_finished = True
+            self.recog_finished = True
 
 
     def stop(self):
@@ -166,10 +162,18 @@ class ObjectRecognizer(QThread):
     def __init__(self):
         super().__init__()
 
-    def run(self, frame, model):
-        res = prepare_image(frame, classes, model)
+    def set_image(self, frame, model):
+        self._frame = frame
+        self._model = model
+
+    def run(self):
+        res = prepare_image(self._frame, classes, self._model)
         self.results.emit(res)
         self.finished.emit(True)
+
+    def stop_thread(self):
+        self.wait()
+
 
 class JsonReader(QThread):
     finished = Signal(dict)
