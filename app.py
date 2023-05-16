@@ -9,9 +9,11 @@ from pydub.playback import play
 import speech_recognition as sr
 import markdown
 import cv2
+import threading
 import numpy as np
 from object_recognition import prepare_image
 from voice import speech_to_text
+#from voice_recognition import SpeechToTextThread
 from names import classes
 from queue import Queue
 
@@ -20,21 +22,47 @@ from queue import Queue
 
         
 
-class VoiceListener(QThread):
-    finished = Signal(str)
+class SpeechToTextThread(QThread):
+    recognized_text = Signal(str)
 
-    def __init__(self, mic, rec):
+    def __init__(self):
         super().__init__()
-        self.rec = rec
-        self.mic = mic
+        self.recognizer = sr.Recognizer()
+        self._run_flag = True
+        self.stopped = False
 
     def run(self):
-        result = speech_to_text(self.mic, self.rec)
-        # if result:
-        self.finished.emit(result)
+        while not self.stopped:
+            while self._run_flag:
+                with sr.Microphone() as source:
+                    print("Listening...")
+                    audio = self.recognizer.listen(
+                        source, timeout=2, phrase_time_limit=5)
+                    self.process_audio(audio)
 
+    def process_audio(self, audio):
+        try:
+            text = self.recognizer.recognize_google(audio)
+            print("You said: ", text)
+            self.recognized_text.emit(text)
+        except sr.UnknownValueError:
+            print("Google Speech Recognition could not understand the audio")
+        except sr.RequestError as e:
+            print(
+                f"Could not request results from Google Speech Recognition service; {e}")
+
+    def start_listening(self):
+        self._run_flag = True
+        self.stopped = False
+        self.start()
+
+    def stop_listening(self):
+        self._run_flag = False
+        
     def stop(self):
-        self.wait()
+        self.stopped = True
+        self.quit()
+    
 
 class GPTThread(QThread):
     finished = Signal(str)
@@ -45,9 +73,11 @@ class GPTThread(QThread):
 
 class ThreadManager:
     def __init__(self):
-        self.listener_thread = VoiceListener()
+        #self.mic_event = threading.Event()
+        #self.listener_thread = VoiceListener()
+        self.listener_thread = SpeechToTextThread()
         self.gpt_thread = GPTThread()
-        self.listener_thread.start()#
+        #self.listener_thread.start()#
         self.thread_queue = Queue()
         self.thread_queue.put(self.gpt_thread)
 
@@ -110,9 +140,10 @@ class VideoChat(QWidget):
         super().__init__()
         self.__initial_sound_finished = False
         self.__on_frame = []
-
-        self.microphone = sr.Microphone()
-        self.recognizer = sr.Recognizer()
+        self.speech_to_text_thread = SpeechToTextThread()
+        self.speech_to_text_thread.recognized_text.connect(self.listened_results)
+        self.is_listening = False
+        
         
         self.setFixedSize(900, 900)
         self.setWindowTitle('GPT Video Chat')
@@ -244,8 +275,7 @@ background-color: rgb(143, 143, 143);
 }
 """)
         self.say_button.setFixedSize(200, 100)
-        
-        self.say_button.clicked.connect(self.listen)
+        self.say_button.clicked.connect(self.toggle_listening)
 
 
         self.call_button_icon = QPixmap('./icons/call.png')
@@ -328,22 +358,27 @@ border: 4px solid white;
 
     def combobox_changed(self):
         print(self.roles_combobox.currentText())
-            
-    def listen(self):
-        self.say_button.setDisabled(True)
-        self.listener_thread = VoiceListener(self.microphone, self.recognizer)
-        self.listener_thread.finished.connect(self.listened_results)
-        self.listener_thread.start()
+        
+    def toggle_listening(self):
+        if not self.is_listening:
+            self.speech_to_text_thread.start_listening()
+            self.is_listening = True
+            self.say_button.setText("Stop")
+        else:
+            self.speech_to_text_thread.stop_listening()
+            self.is_listening = False
+            self.say_button.setText("Say")
+
 
     @Slot(str)
     def listened_results(self, result):
-        print(result)
+        #print(self.recognized_text)
         current_value = self.chat_browser.toMarkdown()
         current_value += "\n\n**You:** " + "*" + result + "*"
         new_markdown = markdown.markdown(current_value)
         self.chat_browser.setText(new_markdown)
         print(current_value)
-        self.say_button.setDisabled(False)
+        #self.say_button.setDisabled(False)
 
 
 

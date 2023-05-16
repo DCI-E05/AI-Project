@@ -1,40 +1,48 @@
 import speech_recognition as sr
-import threading
+from PySide6.QtCore import QThread, Signal
 
-class SpeechRecognizer:
-    def __init__(self, is_conversing_event):
-        self.recognizer = sr.Recognizer()
-        self.is_conversing_event = is_conversing_event
+class SpeechToTextThread(QThread):
+    text_recognized = Signal(str)
 
-    def recognize_speech(self):
-        # if not self.is_conversing_event.is_set():
-        #     return None
+    def __init__(self, rec, mic):
+        super().__init__()
+        self.recognizer = rec
+        self.micro = mic
+        self._run_flag = True
+        self.stopped = False
 
-        with sr.Microphone() as source:
-            print("Listening...")
-            # if not self.is_conversing_event.is_set():
-            #     return None
-            audio = self.recognizer.listen(source)
+    def run(self):
+        self.listen()
 
-        #if not self.is_conversing_event.is_set():
-        #    return None
+    def listen(self):
+        with self.micro as source:
+            while not self.stopped:
+                while self._run_flag:
+                    print("Listening...")
+                    #audio = self.recognizer.listen(source, timeout=20)
+                    audio = self.recognizer.record(source, 10)
+                self.process_audio(audio)
 
+    def process_audio(self, audio):
         try:
-            print("Recognizing...")
             text = self.recognizer.recognize_google(audio)
-            return text 
-
+            print("You said: ", text)
+            self.text_recognized.emit(text)
         except sr.UnknownValueError:
-            print("Could not understand audio. Please try again.")
-            return None
+            print("Google Speech Recognition could not understand the audio")
         except sr.RequestError as e:
-            print(f"Could not request results; {e}")
-            return None
+            print(
+                f"Could not request results from Google Speech Recognition service; {e}")
+
+    def start_listening(self):
+        self._run_flag = True
+        self.stopped = False
+        self.start()
+
+    def stop_listening(self):
+        self._run_flag = False
         
-if __name__ == "__main__":  
-    is_conversing_event = threading.Event()
-    speech_recognizer = SpeechRecognizer(is_conversing_event)
-    while True:
-        is_conversing_event.set()
-        recognized_text = speech_recognizer.recognize_speech()
-        print(recognized_text)
+    def stop(self):
+        self.stopped = True
+        self.wait()
+        self.quit()
