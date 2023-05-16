@@ -9,15 +9,11 @@ import speech_recognition as sr
 import markdown2
 import cv2
 import time
-import re
 import numpy as np
 from object_recognition import prepare_image
 from text_to_speech import TextToSpeech
 from gpt_requests import ChatBot
-from voice import speech_to_text
-# from voice_recognition import SpeechToTextThread
 from names import classes
-from queue import Queue
 
 
 # pip install PySide6 markdown2
@@ -117,19 +113,6 @@ class GPTThread(QThread):
         self.response.emit(resp)
         self.finished.emit(True)
 
-class ThreadManager:
-    def __init__(self):
-        #self.mic_event = threading.Event()
-        #self.listener_thread = VoiceListener()
-        # self.listener_thread = SpeechToTextThread()
-        self.gpt_thread = GPTThread()
-        #self.listener_thread.start()#
-        self.thread_queue = Queue()
-        self.thread_queue.put(self.gpt_thread)
-
-    def button_say_pressed(self):
-        next_thread = self.thread_queue.get()
-        next_thread.start()
 
 class SoundPlayer(QThread):
     finished = Signal(bool)
@@ -154,7 +137,6 @@ class CameraThread(QThread):
         self.cap = cv2.VideoCapture(0)
         self.model = cv2.dnn.readNetFromTensorflow('./model/ssd_mobilenet_v2_coco_2018_03_29/frozen_inference_graph_V2.pb', './model/ssd_mobilenet_v2_coco_2018_03_29/ssd_mobilenet_v2_coco_2018_03_29.pbtxt')
         self.object_recognizer = ObjectRecognizer()
-        self.object_recognizer.finished.connect(self.recognition_finished)
         self.object_recognizer.results.connect(self.emit_results)
         self.recog_finished = bool(True)
         self.last_recognition_time = time.time() # track when the last recognition was done
@@ -164,9 +146,8 @@ class CameraThread(QThread):
             success, img = self.cap.read()
             if success:
                 current_time = time.time()
-                if self.recog_finished and current_time - self.last_recognition_time >= 1:
+                if current_time - self.last_recognition_time >= 1:
                     self.object_recognizer.run(img, self.model)
-                    self.recog_finished = False
                     self.last_recognition_time = current_time
                 self.change_frame.emit(img)
         self.cap.release()
@@ -174,12 +155,6 @@ class CameraThread(QThread):
     @Slot(list)
     def emit_results(self, results):
         self.results.emit(results)
-        self.recog_finished = True
-    
-    @Slot(bool)
-    def recognition_finished(self, finished):
-        if finished:
-            self.recog_finished = True
 
 
     def stop(self):
@@ -234,8 +209,13 @@ class VideoChat(QWidget):
         self.speech_to_text_thread.recognized_text.connect(self.listened_results)
         self.is_listening = False
         
+
+        screen_width, screen_height = QApplication.primaryScreen().size().toTuple()
+
+        x = (screen_width - 900) // 2
+        y = (screen_height - 900) // 2
         
-        self.setFixedSize(900, 900)
+        self.setGeometry(x, y, 900, 900)
         self.setWindowTitle('GPT Video Chat')
         self.setStyleSheet('''QWidget {background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(63, 63, 63), stop: 1 rgb(76, 76, 76));}''')
 
@@ -446,6 +426,7 @@ border: 4px solid white;
             self.say_button.setText("Say")
             if len(self.speech_result) > 0:
                 self.say_button.setDisabled(True)
+                self.speech_result += "[" + ", ".join(self.__on_frame) + "]"
                 self.gpt_instace.set_user_input(self.speech_result)
                 self.gpt_instace.start()
 
@@ -466,8 +447,8 @@ border: 4px solid white;
 
     @Slot(str)
     def retrieve_response(self, response):
-        self.tts_thread.set_text(response)
-        self.tts_thread.start()
+        # self.tts_thread.set_text(response)
+        # self.tts_thread.start()
         current_value = self.chat_browser.toMarkdown()
         current_value += f"\n\n**{self.roles_combobox.currentText()}**: " + response
         new_markdown = markdown2.markdown(current_value, extras=["fenced-code-blocks", "tables", "break-on-newline"])
@@ -581,7 +562,7 @@ border: 4px solid white;
     @Slot(list)
     def update_results(self, results):
         self.__on_frame = results
-        # print(self.__on_frame)
+        print(self.__on_frame)
 
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
