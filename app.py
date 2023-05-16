@@ -77,15 +77,25 @@ class SpeechToTextThread(QThread):
     
 
 class GPTThread(QThread):
-    finished = Signal(str)
+    finished = Signal(bool)
+    response = Signal(str)
 
     def __init__(self, role):
         super().__init__()
+        self.user_input = ''
         self.role = role
         self.chatbot = ChatBot(self.role)
         
+    def change_role(self, role):
+        self.chatbot.set_role(role)
+
+    def set_user_input(self, new_value):
+        self.user_input = new_value
+
     def run(self):
-        self.chatbot.get_response()
+        resp = self.chatbot.get_response(self.user_input)
+        self.response.emit(resp)
+        self.finished.emit(True)
 
 class ThreadManager:
     def __init__(self):
@@ -408,20 +418,28 @@ border: 4px solid white;
             self.speech_to_text_thread.stop_listening()
             self.is_listening = False
             self.say_button.setText("Say")
+            self.say_button.setDisabled(True)
+            if len(self.speech_result) > 0:
+                self.gpt_instace.set_user_input(self.speech_result)
+                self.gpt_instace.start()
 
 
     @Slot(str)
     def listened_results(self, result):
-        #print(self.recognized_text)
+        self.speech_result = result
         current_value = self.chat_browser.toMarkdown()
-        current_value += "\n\n**You:** " + "*" + result  + "*"
-        current_value += f"\n**Objects:** *" + ", ".join(self.__on_frame) + "*"
+        current_value += "\n\n**You:** " + "*" + result + "*"
+        current_value += f"**Objects:** *" + ", ".join(self.__on_frame) + "*"
         new_markdown = markdown.markdown(current_value)
         self.chat_browser.setText(new_markdown)
-        # print(current_value)
-        #self.say_button.setDisabled(False)
+        self.say_button.setDisabled(False)
 
-
+    @Slot(str)
+    def retrieve_response(self, response):
+        current_value = self.chat_browser.toMarkdown()
+        current_value += f"**{self.roles_combobox.currentText()}**: " + "\n" + response
+        new_markdown = markdown.markdown(current_value)
+        self.chat_browser.setText(new_markdown)
 
     @Slot(dict)
     def apply_json(self, roles):
@@ -431,10 +449,16 @@ border: 4px solid white;
         self.roles_dict = roles
         self.roles_combobox.setCurrentText("Choose a role...")
         self.json_read_thread.wait()
+        self.gpt_instace = GPTThread(self.roles_dict['Batman'])
+        self.gpt_instace.response.connect(self.retrieve_response)
             
 
     def combobox_changed(self):
-        self.gpt_instace = GPTThread(self.roles_dict[self.roles_combobox.currentText()])
+        md = markdown.markdown("# Welcome to chat with GPT!")
+        self.chat_browser.setText(md)
+        new_role = self.roles_dict[self.roles_combobox.currentText()]
+        self.gpt_instace.wait()
+        self.gpt_instace.change_role(new_role)
 
     def start_camera(self):
         self.camera_thread.start()

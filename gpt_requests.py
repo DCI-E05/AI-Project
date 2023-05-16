@@ -17,6 +17,10 @@ class ChatBot: # this class returns a chatbot object powered by openai
         self.role = role
         self.messages = [{"role": "system", "content": self.role}]
 
+    def set_role(self, new_role):
+        self.role = new_role
+        self.messages = [{"role": "system", "content": self.role}]
+
     def add_message(self, role, content):
         self.messages.append({"role": role, "content": content})
 
@@ -34,11 +38,18 @@ class ChatBot: # this class returns a chatbot object powered by openai
 
 
 if __name__ == "__main__":
-    bot = ChatBot(role)
+    bot = ChatBot("You are Python programmer.")
     os.system('clear')
-    while True:
-        inp = input("You say: ")
-        bot.get_response(inp)
-        msg = '\n{"objects": ["phone", "snapback hat"]}'
-        response = bot.get_response(msg)
-        print("\n", role+':' , response)
+    # while True:
+    # inp = input("You say: ")
+    # bot.get_response(inp)
+    # msg = '\n{"objects": ["phone", "snapback hat"]}'
+    msg = "I have this code and when I start it, my CPU becomes quite hot. Can you tell me why?\n\n"
+
+    with open('msg.txt') as f:
+        msg += f.read()
+    response = bot.get_response(msg)
+    print("\n", role+':' , response)
+
+
+    

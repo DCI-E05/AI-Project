@@ -10,6 +10,7 @@ class SpeechToTextThread(QThread):
         self.micro = mic
         self._run_flag = True
         self.stopped = False
+        self.all_text = ""
 
     def run(self):
         self.listen()
