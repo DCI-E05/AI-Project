@@ -129,14 +129,17 @@ class CameraThread(QThread):
         self.recog_finished = bool(True)
 
     def run(self):
+        success, img = self.cap.read()
+        self.object_recognizer.set_image(img, self.model)
+        self.object_recognizer.start()
         while self._run_flag:
             success, img = self.cap.read()
             if success:
-                if self.recog_finished:
-                    self.object_recognizer.set_image(img, self.model)
-                    self.object_recognizer.start()
-                    self.recog_finished = False
+                # if not self.recog_finished:
+                #     self.recog_finished = True
                 self.change_frame.emit(img)
+                self.object_recognizer.set_image(img, self.model)
+        self.recog_finished = True
         self.cap.release()
 
     @Slot(list)
@@ -161,17 +164,20 @@ class ObjectRecognizer(QThread):
 
     def __init__(self):
         super().__init__()
+        self.stop = False
 
     def set_image(self, frame, model):
         self._frame = frame
         self._model = model
 
     def run(self):
-        res = prepare_image(self._frame, classes, self._model)
-        self.results.emit(res)
-        self.finished.emit(True)
+        while not self.stop:
+            res = prepare_image(self._frame, classes, self._model)
+            self.results.emit(res)
+            self.finished.emit(True)
 
     def stop_thread(self):
+        self.stop = True
         self.wait()
 
 
