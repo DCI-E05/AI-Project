@@ -10,8 +10,7 @@ objects(e.g. {"objects": ["laptop", "snapback hat"]}), that are persist in my vi
 mention it somehow(e.g. cool cup! or take off your phone, while we on call!)
 """
 
-openai.api_key = "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"
-
+openai.api_key = "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"
 
 class ChatBot: # this class returns a chatbot object powered by openai
     def __init__(self, role):
@@ -23,10 +22,12 @@ class ChatBot: # this class returns a chatbot object powered by openai
 
     def get_response(self, user_input):
         self.add_message("user", user_input)
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=self.messages
-        )
+        try:
+            response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=self.messages)
+        except Exception as e:
+            print(f"Error occurred while getting response from OpenAI API: {e}")
+            return None
+
         result = response.choices[0].message.content
         self.add_message("assistant", result)
         return result
@@ -36,6 +37,8 @@ if __name__ == "__main__":
     bot = ChatBot(role)
     os.system('clear')
     while True:
-        msg = input("You say: ") + '\n\n{"objects": ["phone", "snapback hat"]}'
-        print("\nGPT-Respond: ",bot.get_response(msg))
-        
+        inp = input("You say: ")
+        bot.get_response(inp)
+        msg = '\n{"objects": ["phone", "snapback hat"]}'
+        response = bot.get_response(msg)
+        print("\n", role+':' , response)
