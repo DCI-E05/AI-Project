@@ -53,7 +53,7 @@ class SpeechToTextThread(QThread):
         self.stopped = False
 
     def run(self):
-        self.stop_micro = self.recognizer.listen_in_background(self.microphone, phrase_time_limit=6, callback=self.process_audio)
+        self.stop_micro = self.recognizer.listen_in_background(self.microphone, callback=self.process_audio)
         print("Listening...")
         # while not self.stopped:
         #     while self._run_flag:
@@ -73,8 +73,7 @@ class SpeechToTextThread(QThread):
         except sr.UnknownValueError:
             print("Google Speech Recognition could not understand the audio")
         except sr.RequestError as e:
-            print(
-                f"Could not request results from Google Speech Recognition service; {e}")
+                print(f"Could not request results from Google Speech Recognition service; {e}")
 
     def start_listening(self):
         self._run_flag = True
@@ -199,6 +198,8 @@ class JsonReader(QThread):
 class VideoChat(QWidget):
     def __init__(self):
         super().__init__()
+        with open('styles.json') as f:
+            self.styles = json.load(f)
         self.__initial_sound_finished = False
         self.__on_frame = []
 
@@ -230,11 +231,7 @@ class VideoChat(QWidget):
         self.title = QLabel(text="Video Chat with GPT")
         self.title.setFont(self.font)
         self.title.setAlignment(Qt.AlignHCenter)
-        self.title.setStyleSheet("""font-size: 30px;
-text-align: center;
-font-weight: 700;
-color: rgb(219, 135, 0);
-background-color: none;""")
+        self.title.setStyleSheet(self.styles["title"])
 
         
         # Displays group
@@ -245,9 +242,7 @@ background-color: none;""")
         scaled = self.camera_pixmap.scaled(200, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.camera_image.setPixmap(scaled)
         self.camera_image.setAlignment(Qt.AlignCenter)
-        self.camera_image.setStyleSheet("""border: 5px solid rgb(219, 135, 0);
-border-radius: 13px;
-background-color: rgba(205, 203, 208, 0.15);""")
+        self.camera_image.setStyleSheet(self.styles["camera_image"])
 
         
         self.chat_layout = QVBoxLayout()
@@ -258,12 +253,7 @@ background-color: rgba(205, 203, 208, 0.15);""")
         self.chat_browser.setReadOnly(True)
         md = markdown2.markdown("# Welcome to chat with GPT!", extras=["fenced-code-blocks", "tables", "break-on-newline"])
         self.chat_browser.setHtml(md)
-        self.chat_browser.setStyleSheet("""border: 5px solid rgb(219, 135, 0);
-border-radius: 13px;
-color: rgb(219, 135, 0);
-text-align: center;
-background-color: rgba(205, 203, 208, 0.15);
-""")
+        self.chat_browser.setStyleSheet(self.styles["chat_browser"])
 
 
         # CAMERA THREAD                                        
@@ -277,31 +267,7 @@ background-color: rgba(205, 203, 208, 0.15);
 
         # Combobox to chose the role
         self.roles_combobox = QComboBox()
-        self.roles_combobox.setStyleSheet("""QComboBox {
-  background: rgb(102, 102, 102);
-  border: 3px solid rgb(219, 135, 0);
-  border-radius: 13px;
-  padding: 2px 18px 2px 3px;
-  color: #FFFFFF;
-}
-QComboBox:editable {
-  background: rgb(219, 135, 0);
-}
-QComboBox:!editable,
-QComboBox::drop-down:editable,
-QComboBox:!editable:on,
-QComboBox::drop-down:editable:on {
-  background: rgb(219, 135, 0);
-}
-QComboBox::drop-down {
-  subcontrol-origin: padding;
-  subcontrol-position: top right;
-  border-left: none;
-}
-
-QComboBox QAbstractItemView {
-  background: none;
-}""")
+        self.roles_combobox.setStyleSheet(self.styles["roles_combobox"])
         self.roles_combobox.setFixedHeight(50)
         self.json_read_thread = JsonReader()
         self.json_read_thread.finished.connect(self.apply_json)
@@ -319,24 +285,7 @@ QComboBox QAbstractItemView {
         self.say_button = QPushButton(text="Say")
         self.say_button.setIcon(self.say_button_icon)
         self.say_button.setIconSize(QSize(50, 50))
-        self.say_button.setStyleSheet("""QPushButton {
-border: 3px solid rgb(219, 135, 0);
-border-radius: 13px;
-color: rgb(102, 102, 102);
-font-size: 20px;
-background-color: rgb(219, 135, 0);
-}
-
-QPushButton:hover {
-border: 4px solid white;
-}
-
-QPushButton:disabled {
-color: rgb(219, 135, 0);
-border: 3px solid rgb(143, 143, 143);
-background-color: rgb(143, 143, 143);
-}
-""")
+        self.say_button.setStyleSheet(self.styles["say_button"])
         self.say_button.setFixedSize(200, 100)
         self.say_button.clicked.connect(self.toggle_listening)
 
@@ -346,25 +295,7 @@ background-color: rgb(143, 143, 143);
         self.call_button.setFixedHeight(60)
         self.call_button.setIcon(self.call_button_icon)
         self.call_button.setIconSize(QSize(50, 50))
-        self.call_button.setStyleSheet("""QPushButton {
-border: 3px solid rgb(219, 135, 0);
-border-radius: 13px;
-color: rgb(102, 102, 102);
-font-size: 20px;
-background-color: rgb(219, 135, 0);
-}
-
-QPushButton:hover {
-border: 4px solid white;
-}
-
-QPushButton:disabled {
-color: rgb(219, 135, 0);
-border: 3px solid rgb(143, 143, 143);
-background-color: rgb(143, 143, 143);
-blur(20px);
-}
-""")
+        self.call_button.setStyleSheet(self.styles["call_button"])
         self.call_button.clicked.connect(self.start_camera)
         self.call_button.setFixedSize(200, 100)
 
@@ -373,18 +304,7 @@ blur(20px);
         self.exit_button.setIcon(self.exit_button_icon)
         self.exit_button.setIconSize(QSize(50, 50))
         self.exit_button.clicked.connect(self.exit_app)
-        self.exit_button.setStyleSheet("""QPushButton {
-border: 3px solid rgb(219, 135, 0);
-border-radius: 13px;
-color: rgb(102, 102, 102);
-font-size: 20px;
-background-color: rgb(219, 135, 0);
-}
-
-QPushButton:hover {
-border: 4px solid white;
-}
-""")
+        self.exit_button.setStyleSheet(self.styles["exit_button"])
         self.exit_button.setFixedSize(200, 100)
 
         # Layouts

@@ -1,0 +1,11 @@
+{
+    "QWidget": "QWidget {background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(63, 63, 63), stop: 1 rgb(76, 76, 76));}",
+    "title": "font-size: 30px;\ntext-align: center;\nfont-weight: 700;\ncolor: rgb(219, 135, 0);\nbackground-color: none;",
+    "camera_image": "border: 5px solid rgb(219, 135, 0);\nborder-radius: 13px;\nbackground-color: rgba(205, 203, 208, 0.15);",
+    "chat_browser": "border: 5px solid rgb(219, 135, 0);\nborder-radius: 13px;\ncolor: rgb(219, 135, 0);\ntext-align: center;\nbackground-color: rgba(205, 203, 208, 0.15);",
+    "roles_combobox": "QComboBox {\n  background: rgb(102, 102, 102);\n  border: 3px solid rgb(219, 135, 0);\n  border-radius: 13px;\n  padding: 2px 18px 2px 3px;\n  color: #FFFFFF;\n}\nQComboBox:editable {\n  background: rgb(219, 135, 0);\n}\nQComboBox:!editable,\nQComboBox::drop-down:editable,\nQComboBox:!editable:on,\nQComboBox::drop-down:editable:on {\n  background: rgb(219, 135, 0);\n}\nQComboBox::drop-down {\n  subcontrol-origin: padding;\n  subcontrol-position: top right;\n  border-left: none;\n}\n\nQComboBox QAbstractItemView {\n  background: none;\n}",
+    "say_button": "QPushButton {\nborder: 3px solid rgb(219, 135, 0);\nborder-radius: 13px;\ncolor: rgb(102, 102, 102);\nfont-size: 20px;\nbackground-color: rgb(219, 135, 0);\n}\n\nQPushButton:hover {\nborder: 4px solid white;\n}\n\nQPushButton:disabled {\ncolor: rgb(219, 135, 0);\nborder: 3px solid rgb(143, 143, 143);\nbackground-color: rgb(143, 143, 143);\n}",
+    "call_button": "QPushButton {\nborder: 3px solid rgb(219, 135, 0);\nborder-radius: 13px;\ncolor: rgb(102, 102, 102);\nfont-size: 20px;\nbackground-color: rgb(219, 135, 0);\n}\n\nQPushButton:hover {\nborder: 4px solid white;\n}\n\nQPushButton:disabled {\ncolor: rgb(219, 135, 0);\nborder: 3px solid rgb(143, 143, 143);\nbackground-color: rgb(143, 143, 143);\nblur(20px);\n}",
+    "exit_button": "QPushButton {\nborder: 3px solid rgb(219, 135, 0);\nborder-radius: 13px;\ncolor: rgb(102, 102, 102);\nfont-size: 20px;\nbackground-color: rgb(219, 135, 0);\n}\n\nQPushButton:hover {\nborder: 4px solid white;\n}\n\nQPushButton:disabled {\ncolor: rgb(219, 135, 0);\nborder: 3px solid rgb(143, 143, 143);\nbackground-color: rgb(143, 143, 143);\n}"
+
+}
