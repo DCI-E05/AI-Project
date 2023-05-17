@@ -498,11 +498,11 @@ class VideoChat(QWidget):
         self.exit_sound.start()
         self.exit_sound.wait()
         self.camera_thread.stop()
-        self.gpt_instace.wait()
-        self.camera_thread.wait()
-        self.json_read_thread.wait()
-        self.tts_thread.wait()
-        self.speech_to_text_thread.wait()
+        # self.gpt_instace.wait()
+        # self.camera_thread.wait()
+        # self.json_read_thread.wait()
+        # self.tts_thread.wait()
+        # self.speech_to_text_thread.wait()
         self.close()
 
 
