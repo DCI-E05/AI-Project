@@ -11,19 +11,27 @@ _Demonstration of GUI of the application_
 ## Table of contents
 
 1. [Project description](#project-description)
-2. [Roles](#roles)
-3. [Technologies used](#technologies-used)
-4. [Installation](#installation)
+2. [Application screenshots](#application-screenshots) 
+3. [Roles](#roles)
+4. [Technologies used](#technologies-used)
+5. [Installation](#installation)
 
 ---
 
 ## Project Description
 
-The project will include usage of three artificial intelligences - one is the Elevenlabs Text-To-Speech API, the second is ChatGPT and the third one is an object recognition model from Tensorflow, which called *ssd_mobilenet_v2_coco_2018_03_29* which will be used locally.
+The project will include usage of three artificial intelligences - one is the Elevenlabs Text-To-Speech API, the second is ChatGPT and the third one is an object recognition model from Tensorflow, which called *ssd_mobilenet_v2_coco_2018_03_29* which will be used locally([Model repo](https://github.com/Qengineering/MobileNet_SSD_OpenCV_TensorFlow/tree/master)).
 
 This app will allow user to speak with ChatGPT by his voice, and show certain object to chatgpt and get respond played as a robotic voice.
 
+
+---
+
+## Application screenshots
+
 ![pic2](./docs/app-screenshot-second.png)
+
+![pic3](./docs/app-screenshot-third.png)
 
 ---
 
@@ -39,7 +47,6 @@ The list of roles:
 + Crackhead
 + Kaufland Employee
 
-![pic3](./docs/app-screenshot-third.png)
 
 Each role will have it's own character, which ChatGPT4 will try to play, and speak in it's manner.
 
@@ -50,6 +57,7 @@ Also, local instance of model on your PC will recognize objects on your camera a
 ## Technologies used
 
 The required technologies:
+  + PySide6 for GUI creation
   + Tensorflow object recognition model
     - COCO names for that model
   + ChatGPT API
