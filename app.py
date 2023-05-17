@@ -447,8 +447,8 @@ border: 4px solid white;
 
     @Slot(str)
     def retrieve_response(self, response):
-        # self.tts_thread.set_text(response)
-        # self.tts_thread.start()
+        self.tts_thread.set_text(response)
+        self.tts_thread.start()
         current_value = self.chat_browser.toMarkdown()
         current_value += f"\n\n**{self.roles_combobox.currentText()}**: " + response
         new_markdown = markdown2.markdown(current_value, extras=["fenced-code-blocks", "tables", "break-on-newline"])
@@ -561,7 +561,7 @@ border: 4px solid white;
     
     @Slot(list)
     def update_results(self, results):
-        self.__on_frame = results
+        self.__on_frame = set(results)
         print(self.__on_frame)
 
     def convert_cv_qt(self, cv_img):
@@ -578,6 +578,11 @@ border: 4px solid white;
         self.exit_sound.start()
         self.exit_sound.wait()
         self.camera_thread.stop()
+        self.gpt_instace.wait()
+        self.camera_thread.wait()
+        self.json_read_thread.wait()
+        self.tts_thread.wait()
+        self.speech_to_text_thread.wait()
         self.close()
 
 

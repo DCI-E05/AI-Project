@@ -1,30 +1,44 @@
 import os
 import json
 import subprocess
+from pprint import pprint
 from elevenlabs import generate, play, set_api_key, voices
 
+set_api_key("7349ffe83ba56a8b09f784e1173d53a5")
+
 voices_map = {
-        #"Crackhead": "crackhead",
+        "Crackhead": "Crackhead",
         "Employee-kaufland": "Domi",
-        #"Markus": "Markus",
+        "Markus": "Markus",
         "Crusader": "Antoni",
-        "Mike Tyson": "Adam",
+        "Mike Tyson": "Tyson",
         "Batman": "Adam",
         "Batman Rogue": "Antoni",
         "Eminem": "Adam"
 }
 
-set_api_key("408b5dac61855f58fbadd1e24910da6e")
+for voice in voices():
+    if voice.name == "Crackhead":
+        voices_map["Crackhead"] = voice
+    if voice.name == "Markus": 
+        voices_map["Markus"] = voice
+    if voice.name == "Tyson":
+        voices_map["Mike Tyson"] = voice
+
+
+# set_api_key("408b5dac61855f58fbadd1e24910da6e") # Abdullah
 
 class TextToSpeech:
     def __init__(self, voice, language="en", slow=False):
         self.language = language
         self.slow = slow
         self.voice = voices_map.get(voice, None)
+        # self.voice = voice
         self.proc = None
 
     def set_voice(self, new_voice):
         self.voice = voices_map.get(new_voice, None)
+        # self.voice = new_voice
 
     def play(self, audio: bytes, notebook: bool = False) -> None:
         if notebook:
@@ -41,7 +55,7 @@ class TextToSpeech:
             self.proc.communicate(input=audio)
 
     def speak(self, text):
-        audio = generate(text=text, voice=self.voice)
+        audio = generate(text=text, voice=self.voice, api_key="7349ffe83ba56a8b09f784e1173d53a5")
         self.play(audio)
 
     def stop(self):
@@ -51,28 +65,6 @@ class TextToSpeech:
 
 
 if __name__ == "__main__":
-    voices_map = {
-        #"crackhead": "crackhead",
-        "employee-kaufland": "Domi",
-        #"Markus": "Markus",
-        "crusader": "Antoni",
-        "mike-tyson": "Adam",
-        "batman": "Adam",
-        "batman-rogue": "Antoni",
-        "eminem": "Adam"
-    }
-
-    bot = input(
-    """choose the role of GPT:
-employee-kaufland
-crusader
-mike-tyson
-batman
-eminem
-""") 
-    lorem = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum varius consequat libero, a porta sapien pharetra quis. Mauris ante turpis, pulvinar condimentum tellus id, vulputate ullamcorper dui. Nulla nunc tortor, scelerisque non ex id, placerat viverra tortor. Nam volutpat nibh in est mollis, sed volutpat sapien auctor. Vivamus interdum augue id diam venenatis, vel sagittis odio semper. Proin tellus diam, congue at ipsum eget, aliquet mollis felis. Morbi tempus mi felis, a feugiat orci ultrices eu.
-
-Donec eget quam commodo nisi placerat tempor. Nunc vitae eleifend risus. Ut consequat libero purus, et sagittis mi fringilla a. Duis sed posuere ipsum. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Duis consequat tempor orci a aliquam. Fusce lectus mauris, consequat tempor pretium id, pretium a eros. Nullam vulputate sed lorem venenatis posuere. Sed eget finibus diam. Nulla facilisi. Mauris at rutrum arcu, eget dictum nisi."""
-    voice_role = voices_map["crusader"]
+    voice_role = voices_map["Crusader"]
     tts = TextToSpeech(voice=voice_role)
-    tts.speak(lorem)
+    tts.speak("Hello, my dear, how are you?")

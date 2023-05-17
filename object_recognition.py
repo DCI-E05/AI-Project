@@ -14,8 +14,7 @@ def prepare_image(frame, classes, model):
 
     for detection in output[0, 0, :, :]:
         confidence = detection[2]
-        if confidence > 0.7:
-            
+        if confidence > 0.6:
             class_id = int(detection[1])
             class_name = classes[class_id]
             results.append(class_name)
