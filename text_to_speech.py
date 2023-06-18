@@ -4,7 +4,7 @@ import subprocess
 from pprint import pprint
 from elevenlabs import generate, play, set_api_key, voices
 
-set_api_key("7349ffe83ba56a8b09f784e1173d53a5")
+set_api_key("elevenlabs-api-key")
 
 voices_map = {
         "Crackhead": "Crackhead",
@@ -24,9 +24,6 @@ for voice in voices():
         voices_map["Markus"] = voice
     if voice.name == "Tyson":
         voices_map["Mike Tyson"] = voice
-
-
-# set_api_key("408b5dac61855f58fbadd1e24910da6e") # Abdullah
 
 class TextToSpeech:
     def __init__(self, voice, language="en", slow=False):
