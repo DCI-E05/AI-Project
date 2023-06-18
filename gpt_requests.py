@@ -10,7 +10,7 @@ objects(e.g. {"objects": ["laptop", "snapback hat"]}), that are persist in my vi
 mention it somehow(e.g. cool cup! or take off your phone, while we on call!)
 """
 
-openai.api_key = "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"
+openai.api_key = "your_api_key"
 
 class ChatBot: # this class returns a chatbot object powered by openai
     def __init__(self, role):
@@ -40,10 +40,6 @@ class ChatBot: # this class returns a chatbot object powered by openai
 if __name__ == "__main__":
     bot = ChatBot("You are Python programmer.")
     os.system('clear')
-    # while True:
-    # inp = input("You say: ")
-    # bot.get_response(inp)
-    # msg = '\n{"objects": ["phone", "snapback hat"]}'
     msg = "I have this code and when I start it, my CPU becomes quite hot. Can you tell me why?\n\n"
 
     with open('msg.txt') as f:
